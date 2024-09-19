@@ -4,14 +4,11 @@ const context = canvas.getContext('2d');
 canvas.width = 800;
 canvas.height = 600;
 
-// Offscreen canvas for loading wall texture
-const offscreenCanvas = document.createElement('canvas');
-const offscreenContext = offscreenCanvas.getContext('2d');
+const tileSize = 64;
+const fov = Math.PI / 4; // Field of view
+const numRays = canvas.width;
+const maxDepth = 600;
 
-const wallTexture = new Image();
-wallTexture.src = "/assets/walltexture.jpg";
-
-// Player details
 const player = {
     x: 300,
     y: 300,
@@ -20,10 +17,9 @@ const player = {
     turnSpeed: 0.05
 };
 
-const tileSize = 64;
-const fov = Math.PI / 4; // Field of view
-const numRays = canvas.width;
-const maxDepth = 600;
+// Load wall texture (ensure it's loaded before using it)
+const wallTexture = new Image();
+wallTexture.src = "/assets/walltexture.jpg";
 
 // 2D map layout
 const map = [
@@ -34,18 +30,22 @@ const map = [
     [1, 1, 1, 1, 1, 1, 1, 1]
 ];
 
-// Ensure the wall texture is drawn onto an offscreen canvas
+// Check if wallTexture is loaded
 wallTexture.onload = function() {
-    offscreenCanvas.width = wallTexture.width;
-    offscreenCanvas.height = wallTexture.height;
-    offscreenContext.drawImage(wallTexture, 0, 0);
-
-    gameLoop(); // Start the game loop once the texture is loaded
+    gameLoop();
 };
 
-// Raycasting function
+// Function to render the scene (sky, floor, walls)
 function render() {
     context.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Render the sky (top half of the canvas)
+    context.fillStyle = '#87CEEB'; // Light blue for sky
+    context.fillRect(0, 0, canvas.width, canvas.height / 2);
+
+    // Render the floor (bottom half of the canvas)
+    context.fillStyle = '#555555'; // Dark gray for floor
+    context.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
 
     for (let i = 0; i < numRays; i++) {
         const rayAngle = (player.angle - fov / 2) + (i / numRays) * fov;
@@ -64,31 +64,24 @@ function render() {
                 hitWall = true;
                 const wallHeight = (tileSize / distance) * 300;
 
-                // Use getImageData to extract texture pixel data
-                const textureX = Math.floor((rayX % tileSize) / tileSize * offscreenCanvas.width);
-                const imageData = offscreenContext.getImageData(textureX, 0, 1, offscreenCanvas.height);
-                const wallSlice = context.createImageData(1, wallHeight);
+                // Shading for walls based on distance
+                const shade = Math.max(0, 255 - distance * 0.1);
+                context.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
 
-                for (let y = 0; y < wallHeight; y++) {
-                    const textureY = Math.floor((y / wallHeight) * offscreenCanvas.height);
-                    const colorIndex = (textureY * imageData.width) * 4;
-                    wallSlice.data[y * 4 + 0] = imageData.data[colorIndex];
-                    wallSlice.data[y * 4 + 1] = imageData.data[colorIndex + 1];
-                    wallSlice.data[y * 4 + 2] = imageData.data[colorIndex + 2];
-                    wallSlice.data[y * 4 + 3] = 255; // Fully opaque
-                }
-                context.putImageData(wallSlice, i, (canvas.height / 2) - wallHeight / 2);
+                context.fillRect(i, (canvas.height / 2) - wallHeight / 2, 1, wallHeight);
             }
         }
     }
 }
 
+// Function to check if player collides with a wall
 function isColliding(newX, newY) {
     const mapX = Math.floor(newX / tileSize);
     const mapY = Math.floor(newY / tileSize);
     return map[mapY][mapX] > 0;
 }
 
+// Update player movement and rotation
 function update() {
     let newX = player.x;
     let newY = player.y;
@@ -113,6 +106,7 @@ function update() {
     }
 }
 
+// Game loop to update and render continuously
 function gameLoop() {
     update();
     render();
