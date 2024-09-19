@@ -4,14 +4,10 @@ const context = canvas.getContext('2d');
 canvas.width = 800;
 canvas.height = 600;
 
-console.log("Starting the game...");
+// Offscreen canvas for loading wall texture
+const offscreenCanvas = document.createElement('canvas');
+const offscreenContext = offscreenCanvas.getContext('2d');
 
-const gl = canvas.getContext('webgl');
-if (!gl) {
-    console.error('WebGL not supported');
-}
-
-// Load the wall texture
 const wallTexture = new Image();
 wallTexture.src = "/assets/walltexture.jpg";
 
@@ -38,6 +34,15 @@ const map = [
     [1, 1, 1, 1, 1, 1, 1, 1]
 ];
 
+// Ensure the wall texture is drawn onto an offscreen canvas
+wallTexture.onload = function() {
+    offscreenCanvas.width = wallTexture.width;
+    offscreenCanvas.height = wallTexture.height;
+    offscreenContext.drawImage(wallTexture, 0, 0);
+
+    gameLoop(); // Start the game loop once the texture is loaded
+};
+
 // Raycasting function
 function render() {
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -59,16 +64,18 @@ function render() {
                 hitWall = true;
                 const wallHeight = (tileSize / distance) * 300;
 
-                // Draw the wall with texture mapping
-                const textureX = Math.floor((rayX % tileSize) / tileSize * wallTexture.width);
+                // Use getImageData to extract texture pixel data
+                const textureX = Math.floor((rayX % tileSize) / tileSize * offscreenCanvas.width);
+                const imageData = offscreenContext.getImageData(textureX, 0, 1, offscreenCanvas.height);
                 const wallSlice = context.createImageData(1, wallHeight);
+
                 for (let y = 0; y < wallHeight; y++) {
-                    const textureY = Math.floor((y / wallHeight) * wallTexture.height);
-                    const colorIndex = (textureY * wallTexture.width + textureX) * 4;
-                    wallSlice.data[y * 4 + 0] = wallTexture.data[colorIndex];
-                    wallSlice.data[y * 4 + 1] = wallTexture.data[colorIndex + 1];
-                    wallSlice.data[y * 4 + 2] = wallTexture.data[colorIndex + 2];
-                    wallSlice.data[y * 4 + 3] = 255;
+                    const textureY = Math.floor((y / wallHeight) * offscreenCanvas.height);
+                    const colorIndex = (textureY * imageData.width) * 4;
+                    wallSlice.data[y * 4 + 0] = imageData.data[colorIndex];
+                    wallSlice.data[y * 4 + 1] = imageData.data[colorIndex + 1];
+                    wallSlice.data[y * 4 + 2] = imageData.data[colorIndex + 2];
+                    wallSlice.data[y * 4 + 3] = 255; // Fully opaque
                 }
                 context.putImageData(wallSlice, i, (canvas.height / 2) - wallHeight / 2);
             }
@@ -119,7 +126,3 @@ document.addEventListener('keydown', function(e) {
 document.addEventListener('keyup', function(e) {
     keys[e.key] = false;
 });
-
-wallTexture.onload = function() {
-    gameLoop();
-};
