@@ -13,3 +13,11 @@ body, html {
 #gameCanvas {
     border: 1px solid #fff;
 }
+
+#gun {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+}
