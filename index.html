@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maze 3D Game</title>
+    <title>Maze 3D Game with Skybox and Diagonal Movement</title>
     <style>
         body, html { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -18,13 +18,25 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
+        // Skybox Textures (Make sure you have 6 skybox images)
+        const loader = new THREE.CubeTextureLoader();
+        const skyboxTexture = loader.load([
+            '/assets/sky_ft.jpg', // Front
+            '/assets/sky_bk.jpg', // Back
+            '/assets/sky_up.jpg', // Top
+            '/assets/sky_dn.jpg', // Bottom
+            '/assets/sky_rt.jpg', // Right
+            '/assets/sky_lf.jpg'  // Left
+        ]);
+        scene.background = skyboxTexture;
+
         // Floor Texture
         const floorTexture = new THREE.TextureLoader().load('/assets/thefloor.jpg');
         floorTexture.wrapS = THREE.RepeatWrapping;
         floorTexture.wrapT = THREE.RepeatWrapping;
-        floorTexture.repeat.set(10, 10);
+        floorTexture.repeat.set(100, 100);  // Large repetition for the illusion of infinite floor
 
-        const floorGeometry = new THREE.PlaneGeometry(1000, 1000);
+        const floorGeometry = new THREE.PlaneGeometry(10000, 10000);
         const floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture });
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;
@@ -32,13 +44,6 @@
 
         // Wall Texture
         const wallTexture = new THREE.TextureLoader().load('/assets/walltexture.jpg');
-
-        // Skybox (using nightsky.jpg)
-        const skyTexture = new THREE.TextureLoader().load('/assets/nightsky.jpg');
-        const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
-        const skyMaterial = new THREE.MeshBasicMaterial({ map: skyTexture, side: THREE.BackSide });
-        const skybox = new THREE.Mesh(skyGeometry, skyMaterial);
-        scene.add(skybox);
 
         // Function to generate a maze using recursive backtracking
         function generateMaze(width, height) {
@@ -76,7 +81,7 @@
 
         // Translate maze into 3D walls
         function createMaze3D(maze) {
-            const wallGeometry = new THREE.BoxGeometry(100, 100, 5);
+            const wallGeometry = new THREE.BoxGeometry(100, 100, 10);
             const wallMaterial = new THREE.MeshBasicMaterial({ map: wallTexture });
 
             maze.forEach((row, y) => {
@@ -99,27 +104,46 @@
         camera.position.z = 200;
 
         // Movement controls
-        let moveForward = false, moveBackward = false, turnLeft = false, turnRight = false;
+        let moveForward = false, moveBackward = false, turnLeft = false, turnRight = false, strafeLeft = false, strafeRight = false;
+        const speed = 5;
 
         document.addEventListener('keydown', function (event) {
             if (event.key === 'ArrowUp') moveForward = true;
             if (event.key === 'ArrowDown') moveBackward = true;
-            if (event.key === 'ArrowLeft') turnLeft = true;
-            if (event.key === 'ArrowRight') turnRight = true;
+            if (event.key === 'ArrowLeft') strafeLeft = true;
+            if (event.key === 'ArrowRight') strafeRight = true;
+            if (event.key === 'a') turnLeft = true;  // Use 'a' to turn left
+            if (event.key === 'd') turnRight = true; // Use 'd' to turn right
         });
 
         document.addEventListener('keyup', function (event) {
             if (event.key === 'ArrowUp') moveForward = false;
             if (event.key === 'ArrowDown') moveBackward = false;
-            if (event.key === 'ArrowLeft') turnLeft = false;
-            if (event.key === 'ArrowRight') turnRight = false;
+            if (event.key === 'ArrowLeft') strafeLeft = false;
+            if (event.key === 'ArrowRight') strafeRight = false;
+            if (event.key === 'a') turnLeft = false;
+            if (event.key === 'd') turnRight = false;
         });
 
         function animate() {
             requestAnimationFrame(animate);
 
-            if (moveForward) camera.position.z -= 5;
-            if (moveBackward) camera.position.z += 5;
+            if (moveForward) {
+                camera.position.z -= speed * Math.cos(camera.rotation.y);
+                camera.position.x -= speed * Math.sin(camera.rotation.y);
+            }
+            if (moveBackward) {
+                camera.position.z += speed * Math.cos(camera.rotation.y);
+                camera.position.x += speed * Math.sin(camera.rotation.y);
+            }
+            if (strafeLeft) {
+                camera.position.x -= speed * Math.cos(camera.rotation.y);
+                camera.position.z += speed * Math.sin(camera.rotation.y);
+            }
+            if (strafeRight) {
+                camera.position.x += speed * Math.cos(camera.rotation.y);
+                camera.position.z -= speed * Math.sin(camera.rotation.y);
+            }
             if (turnLeft) camera.rotation.y += 0.05;
             if (turnRight) camera.rotation.y -= 0.05;
 
