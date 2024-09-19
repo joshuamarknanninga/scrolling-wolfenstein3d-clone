@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wolfenstein 3D Clone with Three.js</title>
+    <title>Maze 3D Game</title>
     <style>
         body, html { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -12,7 +12,6 @@
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // Basic Three.js Setup
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer();
@@ -23,7 +22,7 @@
         const floorTexture = new THREE.TextureLoader().load('/assets/thefloor.jpg');
         floorTexture.wrapS = THREE.RepeatWrapping;
         floorTexture.wrapT = THREE.RepeatWrapping;
-        floorTexture.repeat.set(10, 10);  // Adjust for tiling
+        floorTexture.repeat.set(10, 10);
 
         const floorGeometry = new THREE.PlaneGeometry(1000, 1000);
         const floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture });
@@ -33,15 +32,6 @@
 
         // Wall Texture
         const wallTexture = new THREE.TextureLoader().load('/assets/walltexture.jpg');
-        const wallGeometry = new THREE.BoxGeometry(100, 100, 5);  // Adjust dimensions for your walls
-        const wallMaterial = new THREE.MeshBasicMaterial({ map: wallTexture });
-        
-        // Create multiple walls for the maze
-        for (let i = 0; i < 10; i++) {
-            const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-            wall.position.set(i * 150, 50, 0);  // Spacing walls apart
-            scene.add(wall);
-        }
 
         // Skybox (using nightsky.jpg)
         const skyTexture = new THREE.TextureLoader().load('/assets/nightsky.jpg');
@@ -50,12 +40,67 @@
         const skybox = new THREE.Mesh(skyGeometry, skyMaterial);
         scene.add(skybox);
 
-        // Position camera and controls
-        camera.position.y = 50;  // Eye level
-        camera.position.z = 200; // Starting position
-        let moveForward = false, moveBackward = false, turnLeft = false, turnRight = false;
-        
+        // Function to generate a maze using recursive backtracking
+        function generateMaze(width, height) {
+            const maze = Array.from({ length: height }, () => Array(width).fill(1)); // Start with all walls
+
+            function carvePassage(x, y) {
+                const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // Up, Right, Down, Left
+                shuffle(directions);  // Randomize the order of directions
+
+                for (const [dx, dy] of directions) {
+                    const nx = x + dx * 2;
+                    const ny = y + dy * 2;
+
+                    if (nx > 0 && ny > 0 && nx < width - 1 && ny < height - 1 && maze[ny][nx] === 1) {
+                        maze[ny][nx] = 0;         // Carve passage to the new cell
+                        maze[y + dy][x + dx] = 0; // Carve the path in between
+                        carvePassage(nx, ny);     // Recur
+                    }
+                }
+            }
+
+            maze[1][1] = 0; // Start the maze at the top-left corner
+            carvePassage(1, 1); // Generate the maze from this point
+
+            return maze;
+        }
+
+        // Helper function to shuffle directions (Fisher-Yates Shuffle)
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // Translate maze into 3D walls
+        function createMaze3D(maze) {
+            const wallGeometry = new THREE.BoxGeometry(100, 100, 5);
+            const wallMaterial = new THREE.MeshBasicMaterial({ map: wallTexture });
+
+            maze.forEach((row, y) => {
+                row.forEach((cell, x) => {
+                    if (cell === 1) { // If it's a wall
+                        const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                        wall.position.set(x * 150, 50, y * 150);
+                        scene.add(wall);
+                    }
+                });
+            });
+        }
+
+        // Generate a 21x21 maze
+        const maze = generateMaze(21, 21);
+        createMaze3D(maze);
+
+        // Position the camera
+        camera.position.y = 50;
+        camera.position.z = 200;
+
         // Movement controls
+        let moveForward = false, moveBackward = false, turnLeft = false, turnRight = false;
+
         document.addEventListener('keydown', function (event) {
             if (event.key === 'ArrowUp') moveForward = true;
             if (event.key === 'ArrowDown') moveBackward = true;
@@ -89,8 +134,6 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
         });
-
     </script>
 </body>
 </html>
-
