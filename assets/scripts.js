@@ -4,93 +4,67 @@ const context = canvas.getContext('2d');
 canvas.width = 800;
 canvas.height = 600;
 
-const map = [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1],
-    [1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1],
-    [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1],
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-];
+// Load the wall texture
+const wallTexture = new Image();
+wallTexture.src = "/assets/walltexture.jpg";
 
-const tileSize = 64;
-const numRays = canvas.width;
-const fov = Math.PI / 3;
-const halfFov = fov / 2;
-const maxDepth = 20;
-const angleStep = fov / numRays;
-
-let player = {
-    x: 2 * tileSize,
-    y: 2 * tileSize,
+// Player details
+const player = {
+    x: 300,
+    y: 300,
     angle: 0,
     speed: 2,
-    turnSpeed: Math.PI / 60
+    turnSpeed: 0.05
 };
 
-function castRay(angle) {
-    let rayX = player.x;
-    let rayY = player.y;
+const tileSize = 64;
+const fov = Math.PI / 4; // Field of view
+const numRays = canvas.width;
+const maxDepth = 600;
 
-    while (true) {
-        rayX += Math.cos(angle);
-        rayY += Math.sin(angle);
+// 2D map layout
+const map = [
+    [1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1]
+];
 
-        const mapX = Math.floor(rayX / tileSize);
-        const mapY = Math.floor(rayY / tileSize);
-
-        if (map[mapY][mapX] === 1) {
-            const distance = Math.sqrt((rayX - player.x) ** 2 + (rayY - player.y) ** 2);
-            return { rayX, rayY, distance };
-        }
-    }
-}
-
+// Raycasting function
 function render() {
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     for (let i = 0; i < numRays; i++) {
-        const rayAngle = player.angle - halfFov + i * angleStep;
-        const ray = castRay(rayAngle);
+        const rayAngle = (player.angle - fov / 2) + (i / numRays) * fov;
+        let distance = 0;
+        let hitWall = false;
 
-        const distance = ray.distance * Math.cos(rayAngle - player.angle);
-        const wallHeight = (tileSize * canvas.height) / distance;
+        while (!hitWall && distance < maxDepth) {
+            distance += 1;
+            const rayX = player.x + Math.cos(rayAngle) * distance;
+            const rayY = player.y + Math.sin(rayAngle) * distance;
 
-        // Draw ceiling
-        for (let y = 0; y < (canvas.height / 2) - (wallHeight / 2); y++) {
-            const shade = 255 - Math.min(255, (distance / maxDepth) * 255);
-            context.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
-            context.fillRect(i, y, 1, 1);
-        }
+            const mapX = Math.floor(rayX / tileSize);
+            const mapY = Math.floor(rayY / tileSize);
 
-        // Draw wall
-        const color = 255 - Math.min(255, distance * 255 / maxDepth);
-        context.fillStyle = `rgb(${color}, ${color}, ${color})`;
-        context.fillRect(i, (canvas.height / 2) - (wallHeight / 2), 1, wallHeight);
+            if (map[mapY][mapX] > 0) {
+                hitWall = true;
+                const wallHeight = (tileSize / distance) * 300;
 
-        // Draw floor
-        for (let y = (canvas.height / 2) + (wallHeight / 2); y < canvas.height; y++) {
-            const shade = 255 - Math.min(255, (distance / maxDepth) * 255);
-            context.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
-            context.fillRect(i, y, 1, 1);
+                // Draw the wall with texture mapping
+                const textureX = Math.floor((rayX % tileSize) / tileSize * wallTexture.width);
+                const wallSlice = context.createImageData(1, wallHeight);
+                for (let y = 0; y < wallHeight; y++) {
+                    const textureY = Math.floor((y / wallHeight) * wallTexture.height);
+                    const colorIndex = (textureY * wallTexture.width + textureX) * 4;
+                    wallSlice.data[y * 4 + 0] = wallTexture.data[colorIndex];
+                    wallSlice.data[y * 4 + 1] = wallTexture.data[colorIndex + 1];
+                    wallSlice.data[y * 4 + 2] = wallTexture.data[colorIndex + 2];
+                    wallSlice.data[y * 4 + 3] = 255;
+                }
+                context.putImageData(wallSlice, i, (canvas.height / 2) - wallHeight / 2);
+            }
         }
     }
 }
@@ -139,4 +113,6 @@ document.addEventListener('keyup', function(e) {
     keys[e.key] = false;
 });
 
-gameLoop();
+wallTexture.onload = function() {
+    gameLoop();
+};
