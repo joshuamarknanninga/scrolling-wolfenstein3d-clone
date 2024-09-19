@@ -4,6 +4,13 @@ const context = canvas.getContext('2d');
 canvas.width = 800;
 canvas.height = 600;
 
+console.log("Starting the game...");
+
+const gl = canvas.getContext('webgl');
+if (!gl) {
+    console.error('WebGL not supported');
+}
+
 // Load the wall texture
 const wallTexture = new Image();
 wallTexture.src = "/assets/walltexture.jpg";
