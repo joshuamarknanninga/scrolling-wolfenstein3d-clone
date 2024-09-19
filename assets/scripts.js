@@ -17,9 +17,15 @@ const player = {
     turnSpeed: 0.05
 };
 
-// Load wall texture (ensure it's loaded before using it)
+// Load textures for the sky, floor, and walls
 const wallTexture = new Image();
 wallTexture.src = "/assets/walltexture.jpg";
+
+const floorTexture = new Image();
+floorTexture.src = "/assets/thefloor.jpg";
+
+const skyTexture = new Image();
+skyTexture.src = "/assets/nightsky.jpg";
 
 // 2D map layout
 const map = [
@@ -30,23 +36,35 @@ const map = [
     [1, 1, 1, 1, 1, 1, 1, 1]
 ];
 
-// Check if wallTexture is loaded
-wallTexture.onload = function() {
-    gameLoop();
-};
+// Function to check if all textures are loaded before starting the game
+function checkTexturesLoaded() {
+    if (wallTexture.complete && floorTexture.complete && skyTexture.complete) {
+        gameLoop();
+    }
+}
+
+// Ensure all textures are loaded before starting the game
+wallTexture.onload = checkTexturesLoaded;
+floorTexture.onload = checkTexturesLoaded;
+skyTexture.onload = checkTexturesLoaded;
 
 // Function to render the scene (sky, floor, walls)
 function render() {
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Render the sky (top half of the canvas)
-    context.fillStyle = '#87CEEB'; // Light blue for sky
-    context.fillRect(0, 0, canvas.width, canvas.height / 2);
+    // Render the sky
+    for (let i = 0; i < canvas.width; i++) {
+        const skyX = Math.floor((i / canvas.width) * skyTexture.width);
+        context.drawImage(skyTexture, skyX, 0, 1, skyTexture.height, i, 0, 1, canvas.height / 2);
+    }
 
-    // Render the floor (bottom half of the canvas)
-    context.fillStyle = '#555555'; // Dark gray for floor
-    context.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+    // Render the floor
+    for (let i = 0; i < canvas.width; i++) {
+        const floorX = Math.floor((i / canvas.width) * floorTexture.width);
+        context.drawImage(floorTexture, floorX, 0, 1, floorTexture.height, i, canvas.height / 2, 1, canvas.height / 2);
+    }
 
+    // Render walls using raycasting
     for (let i = 0; i < numRays; i++) {
         const rayAngle = (player.angle - fov / 2) + (i / numRays) * fov;
         let distance = 0;
@@ -64,24 +82,36 @@ function render() {
                 hitWall = true;
                 const wallHeight = (tileSize / distance) * 300;
 
-                // Shading for walls based on distance
-                const shade = Math.max(0, 255 - distance * 0.1);
-                context.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
+                // Calculate texture slice for the wall
+                const textureX = Math.floor((rayX % tileSize) / tileSize * wallTexture.width);
+                const wallSlice = context.createImageData(1, wallHeight);
 
-                context.fillRect(i, (canvas.height / 2) - wallHeight / 2, 1, wallHeight);
+                // Draw the wall texture slice
+                const textureY = Math.floor((canvas.height / 2 - wallHeight / 2) / wallTexture.height);
+                context.drawImage(
+                    wallTexture,
+                    textureX,
+                    textureY,
+                    1,
+                    wallTexture.height,
+                    i,
+                    (canvas.height / 2) - wallHeight / 2,
+                    1,
+                    wallHeight
+                );
             }
         }
     }
 }
 
-// Function to check if player collides with a wall
+// Function to check for player collision with walls
 function isColliding(newX, newY) {
     const mapX = Math.floor(newX / tileSize);
     const mapY = Math.floor(newY / tileSize);
     return map[mapY][mapX] > 0;
 }
 
-// Update player movement and rotation
+// Function to update player movement and rotation
 function update() {
     let newX = player.x;
     let newY = player.y;
@@ -106,7 +136,7 @@ function update() {
     }
 }
 
-// Game loop to update and render continuously
+// Main game loop
 function gameLoop() {
     update();
     render();
