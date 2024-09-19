@@ -3,21 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wolfenstein 3D Clone</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.3/css/bulma.min.css">
-    <link rel="stylesheet" href="/assets/styles.css">
+    <title>Wolfenstein 3D Clone with Three.js</title>
+    <style>
+        body, html { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
 </head>
 <body>
-    <section class="section">
-        <div class="container">
-            <h1 class="title has-text-weight-light has-text-light">Wolfenstein 3D Clone</h1>
-            <canvas id="gameCanvas"></canvas>
-            <img id="gun" src="/assets/gun.png" alt="Gun">
-        </div>
-    </section>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
-    <script src="/assets/scripts.js"></script>
+    <script>
+        // Basic Three.js Setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Floor Texture
+        const floorTexture = new THREE.TextureLoader().load('/assets/thefloor.jpg');
+        floorTexture.wrapS = THREE.RepeatWrapping;
+        floorTexture.wrapT = THREE.RepeatWrapping;
+        floorTexture.repeat.set(10, 10);  // Adjust for tiling
+
+        const floorGeometry = new THREE.PlaneGeometry(1000, 1000);
+        const floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        scene.add(floor);
+
+        // Wall Texture
+        const wallTexture = new THREE.TextureLoader().load('/assets/walltexture.jpg');
+        const wallGeometry = new THREE.BoxGeometry(100, 100, 5);  // Adjust dimensions for your walls
+        const wallMaterial = new THREE.MeshBasicMaterial({ map: wallTexture });
+        
+        // Create multiple walls for the maze
+        for (let i = 0; i < 10; i++) {
+            const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+            wall.position.set(i * 150, 50, 0);  // Spacing walls apart
+            scene.add(wall);
+        }
+
+        // Skybox (using nightsky.jpg)
+        const skyTexture = new THREE.TextureLoader().load('/assets/nightsky.jpg');
+        const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+        const skyMaterial = new THREE.MeshBasicMaterial({ map: skyTexture, side: THREE.BackSide });
+        const skybox = new THREE.Mesh(skyGeometry, skyMaterial);
+        scene.add(skybox);
+
+        // Position camera and controls
+        camera.position.y = 50;  // Eye level
+        camera.position.z = 200; // Starting position
+        let moveForward = false, moveBackward = false, turnLeft = false, turnRight = false;
+        
+        // Movement controls
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'ArrowUp') moveForward = true;
+            if (event.key === 'ArrowDown') moveBackward = true;
+            if (event.key === 'ArrowLeft') turnLeft = true;
+            if (event.key === 'ArrowRight') turnRight = true;
+        });
+
+        document.addEventListener('keyup', function (event) {
+            if (event.key === 'ArrowUp') moveForward = false;
+            if (event.key === 'ArrowDown') moveBackward = false;
+            if (event.key === 'ArrowLeft') turnLeft = false;
+            if (event.key === 'ArrowRight') turnRight = false;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (moveForward) camera.position.z -= 5;
+            if (moveBackward) camera.position.z += 5;
+            if (turnLeft) camera.rotation.y += 0.05;
+            if (turnRight) camera.rotation.y -= 0.05;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+    </script>
 </body>
 </html>
+

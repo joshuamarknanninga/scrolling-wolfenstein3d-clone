@@ -1,5 +1,6 @@
 const canvas = document.getElementById('gameCanvas');
 const context = canvas.getContext('2d');
+context.imageSmoothingEnabled = false;  // Disable image smoothing to prevent blurry textures
 
 canvas.width = 800;
 canvas.height = 600;
@@ -27,23 +28,33 @@ floorTexture.src = "/assets/thefloor.jpg";
 const skyTexture = new Image();
 skyTexture.src = "/assets/nightsky.jpg";
 
-// 2D map layout
-const map = [
-    [1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 1, 1, 1, 1, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1]
-];
+// Maze map (this will be randomly generated later)
+let map = [];
 
-// Function to check if all textures are loaded before starting the game
+// Function to generate a random maze (basic implementation)
+function generateRandomMaze(width, height) {
+    const maze = Array.from({ length: height }, () => Array(width).fill(1)); // Start with walls everywhere
+
+    // Randomly carve out paths
+    for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+            if (Math.random() > 0.7) maze[y][x] = 0; // 30% chance to be an empty path
+        }
+    }
+    return maze;
+}
+
+// Generate a random 10x10 maze
+map = generateRandomMaze(10, 10);
+
+// Ensure all textures are loaded before starting the game
 function checkTexturesLoaded() {
     if (wallTexture.complete && floorTexture.complete && skyTexture.complete) {
         gameLoop();
     }
 }
 
-// Ensure all textures are loaded before starting the game
+// Ensure all textures are loaded before rendering
 wallTexture.onload = checkTexturesLoaded;
 floorTexture.onload = checkTexturesLoaded;
 skyTexture.onload = checkTexturesLoaded;
@@ -78,20 +89,18 @@ function render() {
             const mapX = Math.floor(rayX / tileSize);
             const mapY = Math.floor(rayY / tileSize);
 
-            if (map[mapY][mapX] > 0) {
+            if (map[mapY] && map[mapY][mapX] > 0) {
                 hitWall = true;
                 const wallHeight = (tileSize / distance) * 300;
 
-                // Calculate texture slice for the wall
+                // Draw the wall texture slice without blur
                 const textureX = Math.floor((rayX % tileSize) / tileSize * wallTexture.width);
-                const wallSlice = context.createImageData(1, wallHeight);
-
-                // Draw the wall texture slice
                 const textureY = Math.floor((canvas.height / 2 - wallHeight / 2) / wallTexture.height);
+
                 context.drawImage(
                     wallTexture,
                     textureX,
-                    textureY,
+                    0,
                     1,
                     wallTexture.height,
                     i,
@@ -108,7 +117,7 @@ function render() {
 function isColliding(newX, newY) {
     const mapX = Math.floor(newX / tileSize);
     const mapY = Math.floor(newY / tileSize);
-    return map[mapY][mapX] > 0;
+    return map[mapY] && map[mapY][mapX] > 0;
 }
 
 // Function to update player movement and rotation
