@@ -98,7 +98,7 @@
 
         // Translate maze into 3D walls
         function createMaze3D(maze) {
-            const wallGeometry = new THREE.BoxGeometry(150, 100, 10);
+            const wallGeometry = new THREE.BoxGeometry(150, 100, 150); // Ensure walls have depth
             const wallMaterial = new THREE.MeshLambertMaterial({ map: wallTexture });
 
             maze.forEach((row, y) => {
@@ -124,10 +124,12 @@
 
         // Movement controls
         let moveForward = false, moveBackward = false, strafeLeft = false, strafeRight = false;
+        let moveWithMouseForward = false, moveWithMouseBackward = false;
         const speed = 5;
 
         // Mouse sensitivity for movement
         const mouseSensitivity = 0.002;
+        const scrollSensitivity = 0.03;  // Smoother scroll sensitivity for looking up/down
         let pitch = 0; // Up/down camera angle (vertical rotation)
 
         // Pointer Lock for mouse movement
@@ -168,8 +170,34 @@
                 pitch -= event.movementY * mouseSensitivity;
                 pitch = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, pitch)); // Limit vertical rotation
                 camera.rotation.x = pitch;
+
+                // Forward/backward movement based on mouse Y movement
+                if (event.movementY < 0) moveWithMouseForward = true;
+                else if (event.movementY > 0) moveWithMouseBackward = true;
             }
         });
+
+        // Handle mouse wheel scrolling for looking up/down
+        document.addEventListener('wheel', function (event) {
+            // Scroll up = look down, scroll down = look up
+            pitch -= event.deltaY * scrollSensitivity;
+            pitch = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, pitch)); // Limit vertical rotation
+            camera.rotation.x = pitch;
+        });
+
+        function handleMouseMovement() {
+            if (moveWithMouseForward) {
+                camera.position.z -= speed * Math.cos(camera.rotation.y);
+                camera.position.x -= speed * Math.sin(camera.rotation.y);
+                moveWithMouseForward = false;
+            }
+
+            if (moveWithMouseBackward) {
+                camera.position.z += speed * Math.cos(camera.rotation.y);
+                camera.position.x += speed * Math.sin(camera.rotation.y);
+                moveWithMouseBackward = false;
+            }
+        }
 
         // Collision detection: prevent player from walking through walls
         function checkCollision(x, z) {
@@ -184,6 +212,7 @@
             let newX = camera.position.x;
             let newZ = camera.position.z;
 
+            // Arrow key and WASD movement
             if (moveForward) {
                 newZ -= speed * Math.cos(camera.rotation.y);
                 newX -= speed * Math.sin(camera.rotation.y);
@@ -200,6 +229,9 @@
                 newX += speed * Math.cos(camera.rotation.y);
                 newZ -= speed * Math.sin(camera.rotation.y);
             }
+
+            // Handle mouse forward/backward movement
+            handleMouseMovement();
 
             // Apply collision detection
             if (checkCollision(newX, newZ)) {
@@ -224,3 +256,4 @@
     </script>
 </body>
 </html>
+
