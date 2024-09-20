@@ -45,7 +45,7 @@ function generateRandomMaze(width, height) {
 }
 
 // Generate a random 10x10 maze
-map = generateRandomMaze(10, 10);
+map = generateRandomMaze(50, 50);
 
 // Ensure all textures are loaded before starting the game
 function checkTexturesLoaded() {

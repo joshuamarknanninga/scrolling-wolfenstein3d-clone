@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maze 3D Game with Skybox and Diagonal Movement</title>
+    <title>Maze 3D Game with Mouse and Arrow Key Movement</title>
     <style>
         body, html { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -18,15 +18,18 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Skybox Textures (Make sure you have 6 skybox images)
+        // Enable shadows in the renderer
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // Add fog to the scene
+        scene.fog = new THREE.Fog(0x000000, 50, 300);  // Start at 50, end at 300 units
+
+        // Skybox Textures
         const loader = new THREE.CubeTextureLoader();
         const skyboxTexture = loader.load([
-            '/assets/sky_ft.jpg', // Front
-            '/assets/sky_bk.jpg', // Back
-            '/assets/sky_up.jpg', // Top
-            '/assets/sky_dn.jpg', // Bottom
-            '/assets/sky_rt.jpg', // Right
-            '/assets/sky_lf.jpg'  // Left
+            '/assets/sky_ft.jpg', '/assets/sky_bk.jpg', '/assets/sky_up.jpg',
+            '/assets/sky_dn.jpg', '/assets/sky_rt.jpg', '/assets/sky_lf.jpg'
         ]);
         scene.background = skyboxTexture;
 
@@ -34,7 +37,7 @@
         const floorTexture = new THREE.TextureLoader().load('/assets/thefloor.jpg');
         floorTexture.wrapS = THREE.RepeatWrapping;
         floorTexture.wrapT = THREE.RepeatWrapping;
-        floorTexture.repeat.set(100, 100);  // Large repetition for the illusion of infinite floor
+        floorTexture.repeat.set(100, 100);  // Infinite floor illusion
 
         const floorGeometry = new THREE.PlaneGeometry(10000, 10000);
         const floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture });
@@ -45,20 +48,34 @@
         // Wall Texture
         const wallTexture = new THREE.TextureLoader().load('/assets/walltexture.jpg');
 
-        // Function to generate a maze using recursive backtracking
+        // Add a spotlight (flashlight mechanics)
+        const flashlight = new THREE.SpotLight(0xffffff, 1);
+        flashlight.position.set(camera.position.x, camera.position.y, camera.position.z);
+        flashlight.angle = Math.PI / 6; // Narrow beam for flashlight effect
+        flashlight.castShadow = true;
+        flashlight.shadow.mapSize.width = 1024;
+        flashlight.shadow.mapSize.height = 1024;
+        flashlight.shadow.camera.near = 10;
+        flashlight.shadow.camera.far = 500;
+        scene.add(flashlight);
+
+        // Attach the flashlight to the camera (mimicking a flashlight the player is holding)
+        flashlight.target = camera;
+
+        // Function to generate a maze with no gaps
         function generateMaze(width, height) {
             const maze = Array.from({ length: height }, () => Array(width).fill(1)); // Start with all walls
 
             function carvePassage(x, y) {
                 const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // Up, Right, Down, Left
-                shuffle(directions);  // Randomize the order of directions
+                shuffle(directions);  // Randomize the directions
 
                 for (const [dx, dy] of directions) {
                     const nx = x + dx * 2;
                     const ny = y + dy * 2;
 
                     if (nx > 0 && ny > 0 && nx < width - 1 && ny < height - 1 && maze[ny][nx] === 1) {
-                        maze[ny][nx] = 0;         // Carve passage to the new cell
+                        maze[ny][nx] = 0;         // Carve the passage to the new cell
                         maze[y + dy][x + dx] = 0; // Carve the path in between
                         carvePassage(nx, ny);     // Recur
                     }
@@ -66,12 +83,12 @@
             }
 
             maze[1][1] = 0; // Start the maze at the top-left corner
-            carvePassage(1, 1); // Generate the maze from this point
+            carvePassage(1, 1); // Generate the maze
 
             return maze;
         }
 
-        // Helper function to shuffle directions (Fisher-Yates Shuffle)
+        // Helper function to shuffle array
         function shuffle(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -81,21 +98,23 @@
 
         // Translate maze into 3D walls
         function createMaze3D(maze) {
-            const wallGeometry = new THREE.BoxGeometry(100, 100, 10);
-            const wallMaterial = new THREE.MeshBasicMaterial({ map: wallTexture });
+            const wallGeometry = new THREE.BoxGeometry(150, 100, 10);
+            const wallMaterial = new THREE.MeshLambertMaterial({ map: wallTexture });
 
             maze.forEach((row, y) => {
                 row.forEach((cell, x) => {
                     if (cell === 1) { // If it's a wall
                         const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-                        wall.position.set(x * 150, 50, y * 150);
+                        wall.position.set(x * 150, 50, y * 150); // Spacing the walls properly
+                        wall.castShadow = true; // Enable shadows for walls
+                        wall.receiveShadow = true;
                         scene.add(wall);
                     }
                 });
             });
         }
 
-        // Generate a 21x21 maze
+        // Generate a 21x21 maze and create it in the 3D world
         const maze = generateMaze(21, 21);
         createMaze3D(maze);
 
@@ -104,55 +123,99 @@
         camera.position.z = 200;
 
         // Movement controls
-        let moveForward = false, moveBackward = false, turnLeft = false, turnRight = false, strafeLeft = false, strafeRight = false;
+        let moveForward = false, moveBackward = false, strafeLeft = false, strafeRight = false;
         const speed = 5;
 
+        // Mouse sensitivity for movement
+        const mouseSensitivity = 0.002;
+        let pitch = 0; // Up/down camera angle (vertical rotation)
+
+        // Pointer Lock for mouse movement
+        document.body.addEventListener('click', function() {
+            document.body.requestPointerLock();
+        });
+
+        document.addEventListener('pointerlockchange', function() {
+            if (document.pointerLockElement === document.body) {
+                console.log('Pointer lock enabled');
+            } else {
+                console.log('Pointer lock disabled');
+            }
+        });
+
+        // Key controls with movement
         document.addEventListener('keydown', function (event) {
-            if (event.key === 'ArrowUp') moveForward = true;
-            if (event.key === 'ArrowDown') moveBackward = true;
-            if (event.key === 'ArrowLeft') strafeLeft = true;
-            if (event.key === 'ArrowRight') strafeRight = true;
-            if (event.key === 'a') turnLeft = true;  // Use 'a' to turn left
-            if (event.key === 'd') turnRight = true; // Use 'd' to turn right
+            if (event.key === 'ArrowUp' || event.key === 'w') moveForward = true;
+            if (event.key === 'ArrowDown' || event.key === 's') moveBackward = true;
+            if (event.key === 'ArrowLeft' || event.key === 'a') strafeLeft = true;
+            if (event.key === 'ArrowRight' || event.key === 'd') strafeRight = true;
         });
 
         document.addEventListener('keyup', function (event) {
-            if (event.key === 'ArrowUp') moveForward = false;
-            if (event.key === 'ArrowDown') moveBackward = false;
-            if (event.key === 'ArrowLeft') strafeLeft = false;
-            if (event.key === 'ArrowRight') strafeRight = false;
-            if (event.key === 'a') turnLeft = false;
-            if (event.key === 'd') turnRight = false;
+            if (event.key === 'ArrowUp' || event.key === 'w') moveForward = false;
+            if (event.key === 'ArrowDown' || event.key === 's') moveBackward = false;
+            if (event.key === 'ArrowLeft' || event.key === 'a') strafeLeft = false;
+            if (event.key === 'ArrowRight' || event.key === 'd') strafeRight = false;
         });
+
+        // Mouse movement for camera rotation
+        document.addEventListener('mousemove', function (event) {
+            if (document.pointerLockElement === document.body) {
+                // Horizontal (yaw) rotation - left/right mouse movement
+                camera.rotation.y -= event.movementX * mouseSensitivity;
+
+                // Vertical (pitch) rotation - up/down mouse movement
+                pitch -= event.movementY * mouseSensitivity;
+                pitch = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, pitch)); // Limit vertical rotation
+                camera.rotation.x = pitch;
+            }
+        });
+
+        // Collision detection: prevent player from walking through walls
+        function checkCollision(x, z) {
+            const gridX = Math.floor(x / 150);
+            const gridZ = Math.floor(z / 150);
+            return maze[gridZ] && maze[gridZ][gridX] === 0; // Return true if it's an open space
+        }
 
         function animate() {
             requestAnimationFrame(animate);
 
+            let newX = camera.position.x;
+            let newZ = camera.position.z;
+
             if (moveForward) {
-                camera.position.z -= speed * Math.cos(camera.rotation.y);
-                camera.position.x -= speed * Math.sin(camera.rotation.y);
+                newZ -= speed * Math.cos(camera.rotation.y);
+                newX -= speed * Math.sin(camera.rotation.y);
             }
             if (moveBackward) {
-                camera.position.z += speed * Math.cos(camera.rotation.y);
-                camera.position.x += speed * Math.sin(camera.rotation.y);
+                newZ += speed * Math.cos(camera.rotation.y);
+                newX += speed * Math.sin(camera.rotation.y);
             }
             if (strafeLeft) {
-                camera.position.x -= speed * Math.cos(camera.rotation.y);
-                camera.position.z += speed * Math.sin(camera.rotation.y);
+                newX -= speed * Math.cos(camera.rotation.y);
+                newZ += speed * Math.sin(camera.rotation.y);
             }
             if (strafeRight) {
-                camera.position.x += speed * Math.cos(camera.rotation.y);
-                camera.position.z -= speed * Math.sin(camera.rotation.y);
+                newX += speed * Math.cos(camera.rotation.y);
+                newZ -= speed * Math.sin(camera.rotation.y);
             }
-            if (turnLeft) camera.rotation.y += 0.05;
-            if (turnRight) camera.rotation.y -= 0.05;
+
+            // Apply collision detection
+            if (checkCollision(newX, newZ)) {
+                camera.position.x = newX;
+                camera.position.z = newZ;
+            }
+
+            // Update flashlight position to follow the player
+            flashlight.position.set(camera.position.x, camera.position.y + 20, camera.position.z);
 
             renderer.render(scene, camera);
         }
 
         animate();
 
-        // Handle window resize
+        // Handle window resizing
         window.addEventListener('resize', () => {
             renderer.setSize(window.innerWidth, window.innerHeight);
             camera.aspect = window.innerWidth / window.innerHeight;
